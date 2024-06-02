@@ -3,11 +3,13 @@ package com.proyecto.pqrs.entity;
 import java.time.LocalDateTime;
 import lombok.Data;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Transient;
+import org.springframework.data.domain.Persistable;
 import org.springframework.data.relational.core.mapping.Table;
 
 @Data
 @Table("pqrs")
-public class PQRS {
+public class PQRS implements Persistable<String> {
 
   @Id
   private Long id;
@@ -18,6 +20,9 @@ public class PQRS {
   private String comentarios;
   private Long clienteId;
   private Long status;
+
+  @Transient
+  private boolean isNew = true;
 
   public PQRS(
     Long id,
@@ -38,4 +43,14 @@ public class PQRS {
   }
 
   public PQRS() {}
+
+  @Override
+  public boolean isNew() {
+    return this.isNew;
+  }
+
+  @Override
+  public String getId() {
+    return String.valueOf(this.id);
+  }
 }
