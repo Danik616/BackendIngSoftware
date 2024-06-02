@@ -23,10 +23,9 @@ public class Router {
         securityHandler::testEndpoint
       );
 
-    RouterFunction<ServerResponse> pqrHandler = RouterFunctions.route(
-      POST("/api/savePQRS"),
-      pqrsHanlder::guardarPQR
-    );
+    RouterFunction<ServerResponse> pqrHandler = RouterFunctions
+      .route(POST("/api/savePQRS"), pqrsHanlder::guardarPQR)
+      .andRoute(GET("/api/obtenerEstados"), pqrsHanlder::obtenerEstados);
 
     return RouterFunctions.route().add(securityRoutes).add(pqrHandler).build();
   }

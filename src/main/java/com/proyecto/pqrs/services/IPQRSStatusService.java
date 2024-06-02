@@ -1,3 +1,8 @@
 package com.proyecto.pqrs.services;
 
-public interface IPQRSStatusService {}
+import com.proyecto.pqrs.dto.PQRSStatusDto;
+import reactor.core.publisher.Flux;
+
+public interface IPQRSStatusService {
+  Flux<PQRSStatusDto> obtenerStatus();
+}
