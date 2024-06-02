@@ -1,5 +1,6 @@
 package com.proyecto.pqrs.services;
 
+import com.proyecto.pqrs.entity.Cliente;
 import com.proyecto.pqrs.repository.IClienteRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.User;
@@ -51,5 +52,9 @@ public class ClienteService implements IClienteService {
         return Mono.just(passwordMatches && usernameMatches);
       })
       .onErrorResume(UsernameNotFoundException.class, e -> Mono.just(false));
+  }
+
+  public Mono<Cliente> findUserByEmail(String email) {
+    return clienteRepository.findByEmail(email);
   }
 }

@@ -12,6 +12,7 @@ import org.springframework.data.relational.core.mapping.Table;
 public class PQRS implements Persistable<String> {
 
   @Id
+  @Transient
   private Long id;
 
   private String numeroPQRS;
@@ -25,7 +26,6 @@ public class PQRS implements Persistable<String> {
   private boolean isNew = true;
 
   public PQRS(
-    Long id,
     String numeroPQRS,
     LocalDateTime fecha,
     String tipo,
@@ -33,7 +33,6 @@ public class PQRS implements Persistable<String> {
     Long clienteId,
     Long status
   ) {
-    this.id = id;
     this.numeroPQRS = numeroPQRS;
     this.fecha = fecha;
     this.tipo = tipo;

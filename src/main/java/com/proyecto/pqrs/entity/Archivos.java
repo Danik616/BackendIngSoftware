@@ -23,13 +23,11 @@ public class Archivos implements Persistable<String> {
   private boolean isNew = true;
 
   public Archivos(
-    Long id,
     ByteArrayResource archivo,
     String extension,
     String nombreArchivo,
     Long pqrsId
   ) {
-    this.id = id;
     this.archivo = archivo;
     this.extension = extension;
     this.nombreArchivo = nombreArchivo;

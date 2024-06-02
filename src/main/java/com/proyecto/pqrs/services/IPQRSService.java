@@ -1,3 +1,9 @@
 package com.proyecto.pqrs.services;
 
-public interface IPQRSService {}
+import com.proyecto.pqrs.dto.PQRSResponse;
+import com.proyecto.pqrs.entity.PQRS;
+import reactor.core.publisher.Mono;
+
+public interface IPQRSService {
+  public Mono<PQRSResponse> save(PQRS pqrs);
+}
