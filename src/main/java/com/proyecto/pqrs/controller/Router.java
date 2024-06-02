@@ -13,7 +13,8 @@ public class Router {
 
   @Bean
   public RouterFunction<ServerResponse> routerFunction(
-    SecurityHandler securityHandler
+    SecurityHandler securityHandler,
+    PqrsHandler pqrsHanlder
   ) {
     RouterFunction<ServerResponse> securityRoutes = RouterFunctions
       .route(POST("/api/secure/login"), securityHandler::createToken)
@@ -22,6 +23,11 @@ public class Router {
         securityHandler::testEndpoint
       );
 
-    return RouterFunctions.route().add(securityRoutes).build();
+    RouterFunction<ServerResponse> pqrHandler = RouterFunctions.route(
+      POST("/api/savePQRS"),
+      pqrsHanlder::guardarPQR
+    );
+
+    return RouterFunctions.route().add(securityRoutes).add(pqrHandler).build();
   }
 }
