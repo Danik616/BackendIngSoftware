@@ -1,6 +1,7 @@
 package com.proyecto.pqrs.controller;
 
 import com.proyecto.pqrs.dto.PQRRequest;
+import com.proyecto.pqrs.entity.Archivos;
 import com.proyecto.pqrs.entity.PQRS;
 import com.proyecto.pqrs.services.ArchivoService;
 import com.proyecto.pqrs.services.ClienteService;
@@ -8,12 +9,17 @@ import com.proyecto.pqrs.services.PQRSStatusService;
 import com.proyecto.pqrs.services.PQRService;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.buffer.DataBufferUtils;
+import org.springframework.http.codec.multipart.Part;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.BodyExtractors;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Component
@@ -108,6 +114,70 @@ public class PqrsHandler {
       });
   }
 
+  public Mono<ServerResponse> guardarArchivo(ServerRequest serverRequest) {
+    return serverRequest
+      .principal()
+      .cast(Authentication.class)
+      .flatMap(authentication -> {
+        String pqrsId = serverRequest.pathVariable("pqrsId");
+
+        return serverRequest
+          .body(BodyExtractors.toMultipartData())
+          .flatMap(multipartData -> {
+            List<Part> fileParts = multipartData.get("archivos");
+
+            if (fileParts != null && !fileParts.isEmpty()) {
+              Flux<Archivos> archivosFlux = Flux
+                .fromIterable(fileParts)
+                .flatMap(part -> {
+                  String filename = part
+                    .headers()
+                    .getContentDisposition()
+                    .getFilename();
+                  if (filename == null) {
+                    return Mono.error(
+                      new RuntimeException(
+                        "No se pudo obtener el nombre del archivo"
+                      )
+                    );
+                  }
+
+                  return DataBufferUtils
+                    .join(part.content())
+                    .flatMap(dataBuffer -> {
+                      byte[] bytes = new byte[dataBuffer.readableByteCount()];
+                      dataBuffer.read(bytes);
+
+                      Archivos archivo = new Archivos(
+                        bytes,
+                        obtenerExtension(filename),
+                        filename,
+                        Long.parseLong(pqrsId)
+                      );
+
+                      return archivosService
+                        .save(archivo)
+                        .map(response ->
+                          new Archivos(
+                            null,
+                            response.getExtension(),
+                            response.getNombreArchivo(),
+                            response.getPqrsId()
+                          )
+                        );
+                    });
+                });
+
+              return ServerResponse.ok().body(archivosFlux, Archivos.class);
+            } else {
+              return ServerResponse
+                .badRequest()
+                .bodyValue("No se encontraron archivos en la solicitud");
+            }
+          });
+      });
+  }
+
   public Mono<ServerResponse> obtenerEstados(ServerRequest serverRequest) {
     return serverRequest
       .principal()
@@ -118,5 +188,13 @@ public class PqrsHandler {
           .collectList()
           .flatMap(estados -> ServerResponse.ok().bodyValue(estados))
       );
+  }
+
+  public String obtenerExtension(String filename) {
+    int lastIndex = filename.lastIndexOf('.');
+    if (lastIndex != -1 && lastIndex < filename.length() - 1) {
+      return filename.substring(lastIndex + 1);
+    }
+    return "";
   }
 }
