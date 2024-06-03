@@ -26,7 +26,10 @@ public class Router {
     RouterFunction<ServerResponse> pqrHandler = RouterFunctions
       .route(POST("/api/savePQRS"), pqrsHanlder::guardarPQR)
       .andRoute(GET("/api/getStatus"), pqrsHanlder::obtenerEstados)
-      .andRoute(POST("/api/saveFiles/{pqrsId}"), pqrsHanlder::guardarArchivo);
+      .andRoute(
+        POST("/api/saveFiles/{numeroPQRS}"),
+        pqrsHanlder::guardarArchivo
+      );
 
     return RouterFunctions.route().add(securityRoutes).add(pqrHandler).build();
   }

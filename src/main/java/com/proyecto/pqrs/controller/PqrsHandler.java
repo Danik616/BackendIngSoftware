@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.buffer.DataBufferUtils;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.codec.multipart.Part;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -98,6 +99,8 @@ public class PqrsHandler {
                         pqrRequest.getStatus()
                       );
 
+                      pqrs.setId(0L);
+
                       return pqrsService
                         .save(pqrs)
                         .flatMap(savedPqrs ->
@@ -111,6 +114,24 @@ public class PqrsHandler {
                   });
               });
           });
+      })
+      .switchIfEmpty(ServerResponse.status(HttpStatus.UNAUTHORIZED).build())
+      .onErrorResume(e -> {
+        if (e instanceof RuntimeException) {
+          String message = e.getMessage();
+          if (message.equals("Acceso denegado")) {
+            return ServerResponse
+              .status(HttpStatus.UNAUTHORIZED)
+              .bodyValue("Acceso denegado");
+          } else if (message.equals("Usuario no encontrado por el email")) {
+            return ServerResponse
+              .status(HttpStatus.NOT_FOUND)
+              .bodyValue("Usuario no encontrado por el email");
+          }
+        }
+        return ServerResponse
+          .status(HttpStatus.INTERNAL_SERVER_ERROR)
+          .bodyValue("Error interno del servidor");
       });
   }
 
@@ -119,62 +140,96 @@ public class PqrsHandler {
       .principal()
       .cast(Authentication.class)
       .flatMap(authentication -> {
-        String pqrsId = serverRequest.pathVariable("pqrsId");
+        String numeroPQRS = serverRequest.pathVariable("numeroPQRS");
 
-        return serverRequest
-          .body(BodyExtractors.toMultipartData())
-          .flatMap(multipartData -> {
-            List<Part> fileParts = multipartData.get("archivos");
+        return pqrsService
+          .findByNumeroPQRS(numeroPQRS)
+          .flatMap(pqrs -> {
+            Long pqrsId = Long.parseLong(pqrs.getId());
+            return serverRequest
+              .body(BodyExtractors.toMultipartData())
+              .flatMap(multipartData -> {
+                List<Part> fileParts = multipartData.get("archivos");
 
-            if (fileParts != null && !fileParts.isEmpty()) {
-              Flux<Archivos> archivosFlux = Flux
-                .fromIterable(fileParts)
-                .flatMap(part -> {
-                  String filename = part
-                    .headers()
-                    .getContentDisposition()
-                    .getFilename();
-                  if (filename == null) {
-                    return Mono.error(
-                      new RuntimeException(
-                        "No se pudo obtener el nombre del archivo"
-                      )
-                    );
-                  }
+                if (fileParts == null || fileParts.isEmpty()) {
+                  return ServerResponse
+                    .badRequest()
+                    .bodyValue("Debe incluir al menos un archivo.");
+                }
 
-                  return DataBufferUtils
-                    .join(part.content())
-                    .flatMap(dataBuffer -> {
-                      byte[] bytes = new byte[dataBuffer.readableByteCount()];
-                      dataBuffer.read(bytes);
-
-                      Archivos archivo = new Archivos(
-                        bytes,
-                        obtenerExtension(filename),
-                        filename,
-                        Long.parseLong(pqrsId)
-                      );
-
-                      return archivosService
-                        .save(archivo)
-                        .map(response ->
-                          new Archivos(
-                            null,
-                            response.getExtension(),
-                            response.getNombreArchivo(),
-                            response.getPqrsId()
+                if (fileParts != null && !fileParts.isEmpty()) {
+                  Flux<Archivos> archivosFlux = Flux
+                    .fromIterable(fileParts)
+                    .flatMap(part -> {
+                      String filename = part
+                        .headers()
+                        .getContentDisposition()
+                        .getFilename();
+                      if (filename == null) {
+                        return Mono.error(
+                          new RuntimeException(
+                            "No se pudo obtener el nombre del archivo"
                           )
                         );
-                    });
-                });
+                      }
 
-              return ServerResponse.ok().body(archivosFlux, Archivos.class);
-            } else {
-              return ServerResponse
-                .badRequest()
-                .bodyValue("No se encontraron archivos en la solicitud");
-            }
-          });
+                      return DataBufferUtils
+                        .join(part.content())
+                        .flatMap(dataBuffer -> {
+                          byte[] bytes = new byte[dataBuffer.readableByteCount()];
+                          dataBuffer.read(bytes);
+
+                          Archivos archivo = new Archivos(
+                            bytes,
+                            obtenerExtension(filename),
+                            filename,
+                            pqrsId
+                          );
+
+                          return archivosService
+                            .save(archivo)
+                            .map(response ->
+                              new Archivos(
+                                null,
+                                response.getExtension(),
+                                response.getNombreArchivo(),
+                                response.getPqrsId()
+                              )
+                            );
+                        });
+                    });
+
+                  return ServerResponse.ok().body(archivosFlux, Archivos.class);
+                } else {
+                  return ServerResponse
+                    .badRequest()
+                    .bodyValue("No se encontraron archivos en la solicitud");
+                }
+              });
+          })
+          .switchIfEmpty(
+            ServerResponse
+              .status(HttpStatus.NOT_FOUND)
+              .bodyValue("No se encontró el PQRS con el número proporcionado")
+          );
+      })
+      .switchIfEmpty(ServerResponse.status(HttpStatus.UNAUTHORIZED).build())
+      .onErrorResume(e -> {
+        if (e instanceof RuntimeException) {
+          String message = e.getMessage();
+          if (message.equals("Acceso denegado")) {
+            return ServerResponse
+              .status(HttpStatus.UNAUTHORIZED)
+              .bodyValue("Acceso denegado");
+          } else if (message.equals("Usuario no encontrado por el email")) {
+            return ServerResponse
+              .status(HttpStatus.NOT_FOUND)
+              .bodyValue("Usuario no encontrado por el email");
+          }
+        }
+        return ServerResponse
+          .status(HttpStatus.INTERNAL_SERVER_ERROR)
+          .bodyValue("Error interno del servidor");
       });
   }
 

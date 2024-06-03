@@ -79,4 +79,12 @@ class PqrsApplicationTests {
     assertTrue(token.length() > 0);
     assertTrue(validationResultMono.block()); // Validate generated token
   }
+
+  @Test
+  public void testPQR() {
+    String dato = "123456789_2024_0603";
+    Mono<PQRS> flujo = ipqrsRepository.findByNumeroPQRS(dato);
+
+    StepVerifier.create(flujo).expectNextCount(1).verifyComplete();
+  }
 }

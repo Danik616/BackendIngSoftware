@@ -27,4 +27,8 @@ public class PQRService implements IPQRSService {
         return response;
       });
   }
+
+  public Mono<PQRS> findByNumeroPQRS(String numeroPQRS) {
+    return pqrsRepository.findByNumeroPQRS(numeroPQRS);
+  }
 }

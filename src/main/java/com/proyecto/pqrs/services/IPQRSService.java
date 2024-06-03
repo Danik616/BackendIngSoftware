@@ -6,4 +6,6 @@ import reactor.core.publisher.Mono;
 
 public interface IPQRSService {
   public Mono<PQRSResponse> save(PQRS pqrs);
+
+  public Mono<PQRS> findByNumeroPQRS(String numeroPQRS);
 }

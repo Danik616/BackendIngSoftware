@@ -12,7 +12,6 @@ import org.springframework.data.relational.core.mapping.Table;
 public class PQRS implements Persistable<String> {
 
   @Id
-  @Transient
   private Long id;
 
   private String numeroPQRS;
